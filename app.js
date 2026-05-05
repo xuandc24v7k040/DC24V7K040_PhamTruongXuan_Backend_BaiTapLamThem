@@ -1,13 +1,26 @@
 const express = require("express");
 const cors = require("cors");
-const contactsRouter = require("./app/routes/contact.route");
+const cookieParser = require("cookie-parser");
+const csrf = require("csurf");
+
 const ApiError = require("./app/api-error");
+const contactsRouter = require("./app/routes/contact.route");
+const authRouter = require("./app/routes/auth.route");
+const { verifyToken } = require("./app/middlewares/auth.middleware");
+const csrfProtection = require("./app/middlewares/csrf.middleware");
 
 const app = express();
 
-app.use(cors());
+app.use(cors({ origin: "http://localhost:3001", credentials: true }));
+app.use(cookieParser());
 app.use(express.json());
-app.use("/api/contacts", contactsRouter);
+
+app.get("/api/csrf-token", csrfProtection, (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
+
+app.use("/api/auth", authRouter);
+app.use("/api/contacts", verifyToken, contactsRouter);
 
 app.get("/", (req, res) => {
   res.json({ message: "Welcome to contact book application." });
