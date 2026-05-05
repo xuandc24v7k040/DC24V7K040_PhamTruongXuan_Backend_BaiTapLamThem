@@ -23,9 +23,9 @@ const generateRefreshToken = (userId) => {
 
 const setAuthCookies = (res, accessToken, refreshToken) => {
   const cookieOptions = {
-    httpOnly: true, // Chống XSS
-    secure: process.env.NODE_ENV === "production", // Chỉ gửi qua HTTPS khi deploy
-    sameSite: "strict", // Chống CSRF
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
   };
 
   res.cookie("accessToken", accessToken, {
@@ -75,8 +75,13 @@ exports.login = async (req, res, next) => {
     const { email, password } = req.body;
 
     const user = await userService.findByEmail(email);
-    if (!user || user.authType !== "local") {
+
+    if (!user) {
       return next(new ApiError(401, "Email hoặc mật khẩu không đúng."));
+    }
+
+    if (user.authType !== "local") {
+      return next(new ApiError(401, "Tài khoản này đăng nhập bằng Google."));
     }
 
     if (isLocked(user)) {
@@ -147,6 +152,12 @@ exports.googleLogin = async (req, res, next) => {
 
     const userService = new UserService(MongoDB.client);
     let user = await userService.findByEmail(email);
+
+    if (user && user.authType !== "google") {
+      return next(
+        new ApiError(409, "Email này đã được đăng ký bằng mật khẩu."),
+      );
+    }
 
     if (!user) {
       user = await userService.create({ name, email, authType: "google" });

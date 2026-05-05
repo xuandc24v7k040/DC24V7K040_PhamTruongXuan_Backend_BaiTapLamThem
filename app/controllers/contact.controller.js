@@ -9,7 +9,10 @@ exports.create = async (req, res, next) => {
 
   try {
     const contactService = new ContactService(MongoDB.client);
-    const document = await contactService.create(req.body);
+    const document = await contactService.create({
+      ...req.body,
+      ownerId: req.userId,
+    });
     return res.send(document);
   } catch (error) {
     return next(
@@ -27,9 +30,9 @@ exports.findAll = async (req, res, next) => {
     const { name } = req.query;
 
     if (name) {
-      documents = await contactService.findByName(name);
+      documents = await contactService.findByName(name, req.userId);
     } else {
-      documents = await contactService.find({});
+      documents = await contactService.find({ ownerId: req.userId });
     }
   } catch (error) {
     return next(
@@ -43,7 +46,7 @@ exports.findAll = async (req, res, next) => {
 exports.findOne = async (req, res, next) => {
   try {
     const contactService = new ContactService(MongoDB.client);
-    const document = await contactService.findById(req.params.id);
+    const document = await contactService.findById(req.params.id, req.userId);
 
     if (!document) {
       return next(new ApiError(404, "Contact not found"));
@@ -64,7 +67,11 @@ exports.update = async (req, res, next) => {
 
   try {
     const contactService = new ContactService(MongoDB.client);
-    const document = await contactService.update(req.params.id, req.body);
+    const document = await contactService.update(
+      req.params.id,
+      req.userId,
+      req.body,
+    );
 
     if (!document) {
       return next(new ApiError(404, "Contact not found"));
@@ -81,7 +88,7 @@ exports.update = async (req, res, next) => {
 exports.delete = async (req, res, next) => {
   try {
     const contactService = new ContactService(MongoDB.client);
-    const document = await contactService.delete(req.params.id);
+    const document = await contactService.delete(req.params.id, req.userId);
 
     if (!document) {
       return next(new ApiError(404, "Contact not found"));
@@ -95,10 +102,10 @@ exports.delete = async (req, res, next) => {
 };
 
 // Delete all contacts of a user from the database
-exports.deleteAll = async (_req, res, next) => {
+exports.deleteAll = async (req, res, next) => {
   try {
     const contactService = new ContactService(MongoDB.client);
-    const deletedCount = await contactService.deleteAll();
+    const deletedCount = await contactService.deleteAll(req.userId);
     return res.send({
       message: `${deletedCount} contacts were deleted successfully`,
     });
@@ -110,10 +117,12 @@ exports.deleteAll = async (_req, res, next) => {
 };
 
 // Find all favorite contacts of a user
-exports.findAllFavorite = async (_req, res, next) => {
+exports.findAllFavorite = async (req, res, next) => {
   try {
     const contactService = new ContactService(MongoDB.client);
-    const documents = await contactService.findFavorite();
+    const documents = await contactService.findFavorite({
+      ownerId: req.userId,
+    });
     return res.send(documents);
   } catch (error) {
     return next(
